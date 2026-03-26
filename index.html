@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tata AIA Fortune Pro — Fund Value Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
+  header { background: linear-gradient(135deg, #1a1f2e, #16213e); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e63946; }
+  header h1 { font-size: 1.5rem; color: #fff; }
+  header span { font-size: 0.8rem; color: #888; }
+  .badge { background: #e63946; color: #fff; font-size: 0.7rem; padding: 3px 8px; border-radius: 12px; margin-left: 10px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card { background: #1a1f2e; border-radius: 12px; padding: 20px; border: 1px solid #2a2f3e; }
+  .card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .card .value { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  .card .sub { font-size: 0.8rem; margin-top: 4px; }
+  .green { color: #4caf50; }
+  .red { color: #f44336; }
+
+  /* Controls */
+  .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; }
+  .controls select, .controls input, .controls button { padding: 9px 14px; border-radius: 8px; border: 1px solid #2a2f3e; background: #1a1f2e; color: #e0e0e0; font-size: 0.9rem; outline: none; }
+  .controls button { cursor: pointer; font-weight: 600; }
+  .btn-primary { background: #e63946; border-color: #e63946; color: #fff; }
+  .btn-secondary { background: #2a2f3e; border-color: #3a3f4e; color: #ccc; }
+  .btn-primary:hover { background: #c62b36; }
+
+  /* Table */
+  .table-wrap { background: #1a1f2e; border-radius: 12px; border: 1px solid #2a2f3e; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 14px 16px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; border-bottom: 1px solid #2a2f3e; text-align: left; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #1e2336; transition: background 0.15s; }
+  tbody tr:hover { background: #1e2336; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; vertical-align: middle; }
+  .fund-name { font-weight: 600; color: #fff; }
+  .fund-code { font-size: 0.7rem; color: #666; }
+  input[type="number"] { width: 110px; padding: 6px 10px; background: #0f1117; border: 1px solid #2a2f3e; border-radius: 6px; color: #e0e0e0; font-size: 0.85rem; }
+  input[type="number"]:focus { border-color: #e63946; outline: none; }
+  .nav-val { font-weight: 600; }
+  .total-val { font-weight: 700; color: #fff; }
+
+  /* NAV fetch status */
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-live { background: #4caf50; }
+  .status-manual { background: #ff9800; }
+  .status-na { background: #555; }
+
+  /* Allocation bar */
+  .alloc-bar { height: 6px; border-radius: 3px; background: #e63946; min-width: 4px; }
+
+  /* History section */
+  .section-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 14px; margin-top: 32px; }
+  .history-table { width: 100%; border-collapse: collapse; background: #1a1f2e; border-radius: 12px; border: 1px solid #2a2f3e; overflow: hidden; }
+  .history-table th, .history-table td { padding: 10px 16px; font-size: 0.82rem; border-bottom: 1px solid #1e2336; text-align: left; }
+  .history-table th { color: #888; text-transform: uppercase; font-size: 0.7rem; }
+  .history-table tr:last-child td { border-bottom: none; }
+
+  /* Nav fetch helper */
+  .helper { background: #1a1f2e; border: 1px solid #2a2f3e; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; font-size: 0.85rem; color: #aaa; line-height: 1.6; }
+  .helper a { color: #e63946; text-decoration: none; }
+  .helper a:hover { text-decoration: underline; }
+  .helper strong { color: #fff; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.1rem; }
+    .card .value { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Tata AIA Fortune Pro <span class="badge">ULIP</span></h1>
+    <div style="font-size:0.78rem;color:#888;margin-top:4px;">Fund Value Dashboard · Data source: apps.tataaia.com</div>
+  </div>
+  <div style="text-align:right;">
+    <div id="lastUpdated" style="font-size:0.8rem;color:#888;">Last updated: —</div>
+    <button class="btn-primary" style="margin-top:6px;padding:7px 16px;font-size:0.82rem;border-radius:8px;border:none;cursor:pointer;" onclick="openNavPage()">🔗 Open NAV Page</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Helper banner -->
+  <div class="helper">
+    <strong>How to use:</strong>
+    1. Enter your <strong>units held</strong> for each fund you're invested in (from your Tata AIA policy statement).
+    2. Enter the latest <strong>NAV</strong> from the <a href="https://apps.tataaia.com/ULNAV/funds/daily-nav.jsp" target="_blank">Tata AIA NAV page</a> — or click <strong>"Fetch Today's NAV"</strong> (opens the source page; copy NAVs from there).
+    3. Your <strong>total fund value</strong> and portfolio breakdown are calculated automatically.
+    4. Click <strong>"Save Snapshot"</strong> to log today's value for historical tracking. Data is stored locally in your browser.
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="card">
+      <div class="label">Total Portfolio Value</div>
+      <div class="value" id="totalValue">₹0.00</div>
+      <div class="sub" id="totalChange">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Active Funds</div>
+      <div class="value" id="activeFunds">0</div>
+      <div class="sub" style="color:#888;">funds with units > 0</div>
+    </div>
+    <div class="card">
+      <div class="label">Highest NAV Fund</div>
+      <div class="value" id="topFund" style="font-size:1rem;padding-top:6px;">—</div>
+      <div class="sub" id="topFundNav" style="color:#888;">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Last Snapshot Date</div>
+      <div class="value" id="lastSnap" style="font-size:1rem;padding-top:6px;">—</div>
+      <div class="sub" id="lastSnapVal" style="color:#888;">—</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn-primary" onclick="saveSnapshot()">💾 Save Snapshot</button>
+    <button class="btn-secondary" onclick="clearAll()">🗑 Clear All Units</button>
+    <button class="btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn-secondary" onclick="openNavPage()">🔗 Fetch Today's NAV</button>
+    <input type="text" id="policyNo" placeholder="Policy No. (optional)" style="width:180px;" />
+  </div>
+
+  <!-- Main Fund Table -->
+  <div class="table-wrap">
+    <table id="fundTable">
+      <thead>
+        <tr>
+          <th>Fund Name</th>
+          <th>ULIF Code</th>
+          <th>Risk</th>
+          <th>Units Held</th>
+          <th>NAV (₹)</th>
+          <th>Fund Value (₹)</th>
+          <th>Allocation</th>
+        </tr>
+      </thead>
+      <tbody id="fundBody"></tbody>
+    </table>
+  </div>
+
+  <!-- History Section -->
+  <div class="section-title">📈 Portfolio Snapshot History</div>
+  <div class="table-wrap">
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Total Value (₹)</th>
+          <th>Change (₹)</th>
+          <th>Change (%)</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// Fortune Pro Fund Definitions
+// All funds available under Fortune Pro ULIP
+// Source: apps.tataaia.com/ULNAV/funds/daily-nav.jsp
+// ─────────────────────────────────────────────
+const FUNDS = 
