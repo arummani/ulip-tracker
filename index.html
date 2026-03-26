@@ -15,7 +15,7 @@
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 50; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .search-result:hover { background: rgba(59, 130, 246, 0.2); }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -145,8 +145,61 @@
         <!-- Dynamic Funds Container -->
         <div id="dynamic-funds-container" class="grid md:grid-cols-3 gap-6 mb-8"></div>
 
-        <!-- Save & Reference Section -->
+        <!-- Scheme Search Section -->
         <div class="glass rounded-2xl p-6 border border-slate-700 mb-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 bg-purple-500/20 rounded-lg">
+                    <i data-lucide="search" class="w-5 h-5 text-purple-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white">Find Your Scheme Codes</h3>
+                    <p class="text-sm text-slate-400">Search AMFI India database to find mutual fund scheme codes</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="searchScheme" placeholder="Search fund name (e.g., 'SBI Bluechip', 'HDFC Index')..." 
+                    class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    onkeypress="if(event.key==='Enter') searchScheme()">
+                <button onclick="searchScheme()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    Search
+                </button>
+            </div>
+
+            <div id="searchResults" class="hidden">
+                <div class="bg-slate-800/50 rounded-lg border border-slate-700 max-h-60 overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-slate-400 uppercase bg-slate-700/50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3">Scheme Name</th>
+                                <th class="px-4 py-3 w-32">Code</th>
+                                <th class="px-4 py-3 w-20">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchResultsBody" class="divide-y divide-slate-700">
+                            <!-- Results injected here -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-500 mt-2 text-center" id="resultCount"></p>
+            </div>
+            
+            <div id="noResults" class="hidden text-center py-8 text-slate-500">
+                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                <p>Enter a fund name above to search</p>
+            </div>
+
+            <div class="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2 text-sm text-blue-300">
+                <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                <div>
+                    <span class="font-semibold">Tip:</span> Click the copy button next to any scheme code to copy it, then use "Add Mutual Fund" button above to add it to your dashboard.
+                </div>
+            </div>
+        </div>
+
+        <!-- Save & Reference Section -->
+        <div class="glass rounded-2xl p-6 border border-slate-700">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-slate-700/50">
                 <div>
                     <h3 class="text-lg font-semibold text-white mb-1">Save Current Data</h3>
@@ -195,7 +248,7 @@
                 <div>
                     <label class="block text-sm text-slate-400 mb-1">Scheme Code</label>
                     <input type="text" id="newMfCode" placeholder="e.g., 120586" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
-                    <p class="text-xs text-slate-500 mt-1">Find scheme codes at <a href="https://www.amfiindia.com/nav-history-download" target="_blank" class="text-blue-400 underline">AMFI India</a></p>
+                    <p class="text-xs text-slate-500 mt-1">Find scheme codes using the search below or at <a href="https://www.amfiindia.com/nav-history-download" target="_blank" class="text-blue-400 underline">AMFI India</a></p>
                 </div>
                 <div>
                     <label class="block text-sm text-slate-400 mb-1">Fund Name (Optional)</label>
@@ -256,6 +309,9 @@
             renderDynamicFunds();
             refreshAllData();
             setInterval(refreshAllData, 300000); // Auto-refresh every 5 mins
+            
+            // Show empty search state
+            document.getElementById('noResults').classList.remove('hidden');
         };
 
         // Modal Functions
@@ -274,6 +330,88 @@
                 e.target.classList.remove('active');
             }
         };
+
+        // Scheme Search Functionality
+        async function searchScheme() {
+            const query = document.getElementById('searchScheme').value.trim().toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            const noResultsDiv = document.getElementById('noResults');
+            const tbody = document.getElementById('searchResultsBody');
+            const countLabel = document.getElementById('resultCount');
+            
+            if (!query) {
+                resultsDiv.classList.add('hidden');
+                noResultsDiv.classList.remove('hidden');
+                noResultsDiv.innerHTML = '<p class="text-slate-500">Enter a search term to find schemes</p>';
+                return;
+            }
+            
+            resultsDiv.classList.add('hidden');
+            noResultsDiv.classList.remove('hidden');
+            noResultsDiv.innerHTML = '<p class="text-blue-400 flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Searching...</p>';
+            lucide.createIcons();
+            
+            try {
+                // Fetch all schemes from AMFI
+                const response = await fetch('https://api.mfapi.in/mf');
+                if (!response.ok) throw new Error('Failed to fetch');
+                
+                const schemes = await response.json();
+                
+                // Filter matching schemes
+                const matches = schemes.filter(s => 
+                    s.schemeName.toLowerCase().includes(query)
+                ).slice(0, 20); // Limit to 20 results
+                
+                if (matches.length === 0) {
+                    noResultsDiv.innerHTML = '<p class="text-slate-500">No schemes found matching "' + query + '"</p>';
+                    return;
+                }
+                
+                // Display results
+                tbody.innerHTML = matches.map(s => `
+                    <tr class="search-result transition-colors">
+                        <td class="px-4 py-3 text-slate-300 font-medium">${s.schemeName}</td>
+                        <td class="px-4 py-3 font-mono text-blue-400 font-bold">${s.schemeCode}</td>
+                        <td class="px-4 py-3">
+                            <button onclick="copyToClipboard('${s.schemeCode}')" 
+                                class="flex items-center gap-1 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded transition-colors">
+                                <i data-lucide="copy" class="w-3 h-3"></i>
+                                Copy
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                countLabel.textContent = `Showing ${matches.length} result${matches.length !== 1 ? 's' : ''}`;
+                noResultsDiv.classList.add('hidden');
+                resultsDiv.classList.remove('hidden');
+                lucide.createIcons();
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                noResultsDiv.innerHTML = '<p class="text-red-400">Error loading scheme data. Please try again.</p>';
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary success message
+                const btn = event.target.closest('button');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> Copied!';
+                btn.classList.remove('bg-slate-700');
+                btn.classList.add('bg-green-600');
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-slate-700');
+                    lucide.createIcons();
+                }, 1500);
+            });
+        }
 
         // Add new Mutual Fund
         async function addMutualFund() {
