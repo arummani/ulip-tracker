@@ -1,1 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Investment Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold gradient-text mb-2">Portfolio Tracker</h1>
+                <p class="text-slate-400">Indian Markets • Real-time NAV</p>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold" id="totalValue">₹0</div>
+                <div class="text-sm text-slate-400" id="lastUpdated">Last updated: Never</div>
+            </div>
+        </header>
 
+        <!-- Settings Panel -->
+        <div class="glass rounded-2xl p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                Your Holdings Configuration
+            </h2>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+                <div class="bg-slate-800 p-4 rounded-lg">
+                    <label class="block text-slate-400 mb-2">ICICI Prudential Scheme Code</label>
+                    <input type="text" id="iciciCode" placeholder="e.g., 120586" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" value="120586">
+                    <input type="number" id="iciciUnits" placeholder="Units held" class="w-full mt-2 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" step="0.001">
+                </div>
+                <div class="bg-slate-800 p-4 rounded-lg">
+                    <label class="block text-slate-400 mb-2">Other Mutual Fund Code</label>
+                    <input type="text" id="mfCode" placeholder="Scheme Code" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+                    <input type="number" id="mfUnits" placeholder="Units held" class="w-full mt-2 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" step="0.001">
+                </div>
+                <div class="bg-slate-800 p-4 rounded-lg md:col-span-2">
+                    <label class="block text-slate-400 mb-2">Tata AIA ULIP (Manual Entry Required)</label>
+                    <div class="flex gap-4">
+                        <input type="text" id="ulipName" placeholder="Fund Name" class="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" value="Tata AIA ULIP">
+                        <input type="number" id="ulipNav" placeholder="Current NAV" class="w-32 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" step="0.01">
+                        <input type="number" id="ulipUnits" placeholder="Units" class="w-32 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white" step="0.001">
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">*ULIPs don't have public APIs. Update NAV manually from Tata AIA portal.</p>
+                </div>
+            </div>
+            <button onclick="saveHoldings()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Save Holdings & Refresh
+            </button>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="grid md:grid-cols-3 gap-6" id="dashboard">
+            <!-- Cards will be injected here -->
+        </div>
+
+        <!-- Find Scheme Codes -->
+        <div class="glass rounded-2xl p-6 mt-6">
+            <h3 class="text-lg font-semibold mb-3">Don't know your Scheme Code?</h3>
+            <div class="flex gap-2">
+                <input type="text" id="searchScheme" placeholder="Search fund name..." class="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+                <button onclick="searchScheme()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded text-white">Search</button>
+            </div>
+            <div id="searchResults" class="mt-4 max-h-60 overflow-y-auto text-sm"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize icons
+        lucide.createIcons();
+
+        // Load saved data on start
+        window.onload = function() {
+            loadHoldings();
+            fetchAllData();
+        };
+
+        function saveHoldings() {
+            const data = {
+                icici: {
+                    code: document.getElementById('iciciCode').value,
+                    units: parseFloat(document.getElementById('iciciUnits').value) || 0
+                },
+                mf: {
+                    code: document.getElementById('mfCode').value,
+                    units: parseFloat(document.getElementById('mfUnits').value) || 0
+                },
+                ulip: {
+                    name: document.getElementById('ulipName').value,
+                    nav: parseFloat(document.getElementById('ulipNav').value) || 0,
+                    units: parseFloat(document.getElementById('ulipUnits').value) || 0
+                }
+            };
+            localStorage.setItem('portfolioHoldings', JSON.stringify(data));
+            fetchAllData();
+            alert('Holdings saved! Data will persist in this browser.');
+        }
+
+        function loadHoldings() {
+            const saved = localStorage.getItem('portfolioHoldings');
+            if (saved) {
+                const data = JSON.parse(saved);
+                document.getElementById('iciciCode').value = data.icici?.code || '';
+                document.getElementById('iciciUnits').value = data.icici?.units || '';
+                document.getElementById('mfCode').value = data.mf?.code || '';
+                document.getElementById('mfUnits').value = data.mf?.units || '';
+                document.getElementById('ulipName').value = data.ulip?.name || 'Tata AIA ULIP';
+                document.getElementById('ulipNav').value = data.ulip?.nav || '';
+                document.getElementById('ulipUnits').value = data.ulip?.units || '';
+            }
+        }
+
+        async function fetchAllData() {
+            const saved = JSON.parse(localStorage.getItem('portfolioHoldings') || '{}');
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = '<div class="md:col-span-3 text-center py-8">Fetching latest NAV...</div>';
+
+            let totalPortfolioValue = 0;
+            const cards = [];
+
+            try {
+                // Fetch ICICI Fund
+                if (saved.icici?.code) {
+                    const iciciData = await fetchMFData(saved.icici.code, saved.icici.units);
+                    if (iciciData) {
+                        cards.push(createCard('ICICI Prudential', iciciData, 'blue'));
+                        totalPortfolioValue += iciciData.value;
+                    }
+                }
+
+                // Fetch Other MF
+                if (saved.mf?.code) {
+                    const mfData = await fetchMFData(saved.mf.code, saved.mf.units);
+                    if (mfData) {
+                        cards.push(createCard('Mutual Fund', mfData, 'purple'));
+                        totalPortfolioValue += mfData.value;
+                    }
+                }
+
+                // ULIP (Manual)
+                if (saved.ulip?.nav && saved.ulip?.units) {
+                    const ulipValue = saved.ulip.nav * saved.ulip.units;
+                    cards.push(createManualCard(saved.ulip.name, saved.ulip.nav, saved.ulip.units, ulipValue, 'orange'));
+                    totalPortfolioValue += ulipValue;
+                }
+
+                dashboard.innerHTML = cards.join('');
+                document.getElementById('totalValue').textContent = formatCurrency(totalPortfolioValue);
+                document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+            } catch (error) {
+                dashboard.innerHTML = `<div class="md:col-span-3 text-red-400 text-center">Error fetching data. Please check scheme codes.</div>`;
+            }
+        }
+
+        async function fetchMFData(schemeCode, units) {
+            try {
+                const response = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
+                const data = await response.json();
+                if (data.status === 'SUCCESS' && data.data && data.data.length > 0) {
+                    const latestNav = parseFloat(data.data[0].nav);
+                    return {
+                        nav: latestNav,
+                        date: data.data[0].date,
+                        value: latestNav * units,
+                        units: units
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.error('Fetch error:', e);
+                return null;
+            }
+        }
+
+        function createCard(title, data, color) {
+            const colorClasses = {
+                blue: 'border-blue-500/30 bg-blue-500/10',
+                purple: 'border-purple-500/30 bg-purple-500/10',
+                orange: 'border-orange-500/30 bg-orange-500/10'
+            };
+            
+            return `
+                <div class="glass rounded-2xl p-6 border ${colorClasses[color] || colorClasses.blue}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-semibold text-lg">${title}</h3>
+                        <span class="text-xs text-slate-400">${data.date}</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">NAV</span>
+                            <span class="font-mono font-bold">₹${data.nav.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Units</span>
+                            <span class="font-mono">${data.units}</span>
+                        </div>
+                        <div class="border-t border-slate-700 pt-2 mt-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Value</span>
+                                <span class="text-2xl font-bold text-white">${formatCurrency(data.value)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createManualCard(name, nav, units, value, color) {
+            return `
+                <div class="glass rounded-2xl p-6 border border-orange-500/30 bg-orange-500/10 relative overflow-hidden">
+                    <div class="absolute top-2 right-2 text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">Manual Entry</div>
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-semibold text-lg">${name}</h3>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">NAV (Manual)</span>
+                            <span class="font-mono font-bold">₹${nav.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Units</span>
+                            <span class="font-mono">${units}</span>
+                        </div>
+                        <div class="border-t border-slate-700 pt-2 mt-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Value</span>
+                                <span class="text-2xl font-bold text-white">${formatCurrency(value)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatCurrency(amount) {
+            if (amount >= 10000000) {
+                return '₹' + (amount/10000000).toFixed(2) + ' Cr';
+            } else if (amount >= 100000) {
+                return '₹' + (amount/100000).toFixed(2) + ' L';
+            }
+            return '₹' + amount.toLocaleString('en-IN', {maximumFractionDigits: 0});
+        }
+
+        // Scheme search functionality
+        async function searchScheme() {
+            const query = document.getElementById('searchScheme').value.toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = 'Searching...';
+            
+            try {
+                const response = await fetch('https://api.mfapi.in/mf');
+                const schemes = await response.json();
+                
+                const matches = schemes.filter(s => s.schemeName.toLowerCase().includes(query)).slice(0, 20);
+                
+                if (matches.length === 0) {
+                    resultsDiv.innerHTML = 'No matches found';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = matches.map(s => `
+                    <div class="flex justify-between items-center p-2 hover:bg-slate-700 rounded cursor-pointer" onclick="copyCode('${s.schemeCode}')">
+                        <span class="truncate flex-1">${s.schemeName}</span>
+                        <span class="text-blue-400 font-mono ml-2">${s.schemeCode}</span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                resultsDiv.innerHTML = 'Error loading scheme list';
+            }
+        }
+
+        function copyCode(code) {
+            navigator.clipboard.writeText(code);
+            alert('Scheme code ' + code + ' copied! Paste it in the configuration above.');
+        }
+    </script>
+</body>
+</html>
