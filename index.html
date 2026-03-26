@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>India Investment Tracker</title>
+    <title>My Investment Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -11,233 +11,257 @@
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
         .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .ulip-badge { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .mf-badge { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
         <!-- Header -->
-        <header class="mb-8 flex justify-between items-center">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 class="text-4xl font-bold gradient-text mb-2">Portfolio Tracker</h1>
-                <p class="text-slate-400">ICICI Pru & Tata AIA Holdings</p>
+                <h1 class="text-4xl font-bold gradient-text mb-2">Investment Portfolio</h1>
+                <p class="text-slate-400">Live Tracker • ICICI Pru & Tata AIA</p>
             </div>
-            <div class="text-right">
-                <div class="text-3xl font-bold text-white" id="totalValue">₹0</div>
-                <div class="text-sm text-slate-400" id="lastUpdated">Update pending</div>
+            <div class="text-right bg-slate-800/50 px-6 py-4 rounded-2xl border border-slate-700">
+                <div class="text-sm text-slate-400 mb-1">Total Portfolio Value</div>
+                <div class="text-4xl font-bold text-white" id="totalValue">Loading...</div>
+                <div class="text-xs text-slate-500 mt-1" id="lastUpdated">Syncing...</div>
             </div>
         </header>
 
-        <!-- Configuration Panel -->
-        <div class="glass rounded-2xl p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                <i data-lucide="wallet" class="w-5 h-5"></i>
-                Configure Holdings
-            </h2>
-            
-            <div class="space-y-4">
-                <!-- ICICI Pru Maximiser Fund V (ULIP) -->
-                <div class="bg-slate-800/50 border border-amber-500/30 rounded-lg p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="ulip-badge text-xs font-bold px-2 py-1 rounded text-white">ULIP</span>
-                        <h3 class="font-semibold text-amber-400">ICICI Prudential Maximiser Fund V</h3>
-                    </div>
-                    <div class="grid md:grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">Units (Locked)</label>
-                            <input type="number" id="maximiserUnits" value="35237.94" readonly 
-                                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-300 cursor-not-allowed">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">Current NAV (Manual)</label>
-                            <input type="number" id="maximiserNav" placeholder="e.g. 50.17" step="0.01"
-                                class="w-full bg-slate-700 border border-amber-500/50 rounded px-3 py-2 text-white focus:border-amber-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">Calculated Value</label>
-                            <div id="maximiserValue" class="text-xl font-bold text-amber-400 py-2">₹0</div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-500 mt-2">
-                        *ULIP NAV not available via API. Update manually from 
-                        <a href="https://www.iciciprulife.com/fund-performance/equity-fund/maximiser-v-nav-history.html" target="_blank" class="text-amber-400 underline">ICICI Pru Portal</a>
-                    </p>
+        <!-- Hardcoded Holdings Display -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <!-- Scheme 154265 - Auto-fetched -->
+            <div class="glass rounded-2xl p-6 border border-blue-500/30 relative overflow-hidden group hover:border-blue-400/50 transition-all">
+                <div class="absolute top-0 right-0 bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-bl-lg font-medium">
+                    AUTO-SYNC
                 </div>
-
-                <!-- Tata AIA ULIP -->
-                <div class="bg-slate-800/50 border border-orange-500/30 rounded-lg p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="ulip-badge text-xs font-bold px-2 py-1 rounded text-white">ULIP</span>
-                        <h3 class="font-semibold text-orange-400">Tata AIA ULIP</h3>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 bg-blue-500/20 rounded-lg">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-blue-400"></i>
                     </div>
-                    <div class="grid md:grid-cols-3 gap-3">
-                        <input type="text" id="tataName" placeholder="Fund Name" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
-                        <input type="number" id="tataNav" placeholder="NAV" step="0.01" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
-                        <input type="number" id="tataUnits" placeholder="Units" step="0.001" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight">Diversified Equity All Cap Active FOF</h3>
+                        <p class="text-xs text-slate-400">Scheme 154265 • Growth</p>
                     </div>
                 </div>
-
-                <!-- Mutual Fund (If you actually have code 154265) -->
-                <div class="bg-slate-800/50 border border-blue-500/30 rounded-lg p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="mf-badge text-xs font-bold px-2 py-1 rounded text-white">MUTUAL FUND</span>
-                        <h3 class="font-semibold text-blue-400">Other Mutual Fund (Optional)</h3>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                        <span class="text-slate-400">Units (Fixed)</span>
+                        <span class="font-mono font-semibold text-lg">40,026.352</span>
                     </div>
-                    <div class="grid md:grid-cols-3 gap-3">
-                        <input type="text" id="mfCode" placeholder="Scheme Code (e.g. 154265)" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
-                        <input type="number" id="mfUnits" placeholder="Units" step="0.001" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
-                        <div id="mfValue" class="text-xl font-bold text-blue-400 py-2">Auto-fetched</div>
+                    <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                        <span class="text-slate-400">Current NAV</span>
+                        <span class="font-mono font-bold text-xl text-blue-400" id="scheme154265Nav">--</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2">
+                        <span class="text-slate-400">Value</span>
+                        <span class="font-bold text-2xl text-white" id="scheme154265Value">--</span>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full pulse"></div>
+                    Live API Data
+                </div>
+            </div>
+
+            <!-- Maximiser Fund V - Manual -->
+            <div class="glass rounded-2xl p-6 border border-amber-500/30 hover:border-amber-400/50 transition-all">
+                <div class="absolute top-0 right-0 bg-amber-500/20 text-amber-300 text-xs px-3 py-1 rounded-bl-lg font-medium">
+                    MANUAL ENTRY
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 bg-amber-500/20 rounded-lg">
+                        <i data-lucide="shield" class="w-6 h-6 text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight">Maximiser Fund V</h3>
+                        <p class="text-xs text-slate-400">ULIP • ICICI Pru Life</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                        <span class="text-slate-400">Units (Fixed)</span>
+                        <span class="font-mono font-semibold text-lg">35,237.94</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                        <span class="text-slate-400">NAV Input</span>
+                        <input type="number" id="maximiserNav" step="0.01" placeholder="Enter NAV" 
+                            class="w-24 bg-slate-800 border border-amber-500/30 rounded px-2 py-1 text-right text-amber-400 font-bold focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div class="flex justify-between items-center pt-2">
+                        <span class="text-slate-400">Value</span>
+                        <span class="font-bold text-2xl text-white" id="maximiserValue">--</span>
                     </div>
                 </div>
             </div>
 
-            <button onclick="saveAndCalculate()" class="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-lg font-semibold transition-all">
-                Save & Calculate Total
-            </button>
+            <!-- Tata AIA ULIP - Manual -->
+            <div class="glass rounded-2xl p-6 border border-orange-500/30 hover:border-orange-400/50 transition-all">
+                <div class="absolute top-0 right-0 bg-orange-500/20 text-orange-300 text-xs px-3 py-1 rounded-bl-lg font-medium">
+                    MANUAL ENTRY
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 bg-orange-500/20 rounded-lg">
+                        <i data-lucide="building" class="w-6 h-6 text-orange-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight">Tata AIA ULIP</h3>
+                        <p class="text-xs text-slate-400">Insurance Linked</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="py-2 border-b border-slate-700/50">
+                        <input type="text" id="tataName" placeholder="Fund Name" value="Tata AIA Fund" 
+                            class="w-full bg-transparent border-none text-sm text-slate-300 focus:outline-none placeholder-slate-600">
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="number" id="tataNav" step="0.01" placeholder="NAV" 
+                            class="w-1/2 bg-slate-800 border border-orange-500/30 rounded px-2 py-1 text-orange-400 font-bold focus:outline-none focus:border-orange-400">
+                        <input type="number" id="tataUnits" step="0.001" placeholder="Units" 
+                            class="w-1/2 bg-slate-800 border border-orange-500/30 rounded px-2 py-1 text-white font-bold focus:outline-none focus:border-orange-400">
+                    </div>
+                    <div class="flex justify-between items-center pt-2">
+                        <span class="text-slate-400">Value</span>
+                        <span class="font-bold text-2xl text-white" id="tataValue">--</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Dashboard Cards -->
-        <div class="grid md:grid-cols-3 gap-4" id="dashboard"></div>
+        <!-- Control Panel -->
+        <div class="glass rounded-2xl p-6 border border-slate-700">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-sm text-slate-400">
+                    <span class="text-slate-300 font-semibold">Note:</span> 
+                    Scheme 154265 updates automatically. ULIPs require manual NAV entry from respective portals.
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="refreshData()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh NAV
+                    </button>
+                    <button onclick="saveULIPData()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        Save ULIP Data
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        lucide.createIcons();
+        // Constants
+        const SCHEME_154265_CODE = '154265';
+        const SCHEME_154265_UNITS = 40026.352;
+        const MAXIMISER_UNITS = 35237.94;
 
-        // Load saved data
+        // Initialize
         window.onload = function() {
-            const saved = localStorage.getItem('portfolioData');
-            if (saved) {
-                const data = JSON.parse(saved);
-                document.getElementById('maximiserNav').value = data.maximiser?.nav || '';
-                document.getElementById('tataName').value = data.tata?.name || '';
-                document.getElementById('tataNav').value = data.tata?.nav || '';
-                document.getElementById('tataUnits').value = data.tata?.units || '';
-                document.getElementById('mfCode').value = data.mf?.code || '';
-                document.getElementById('mfUnits').value = data.mf?.units || '';
-                calculateAll();
-            }
+            lucide.createIcons();
+            loadSavedData();
+            fetchAllData();
+            // Auto-refresh every 5 minutes
+            setInterval(fetchAllData, 300000);
         };
 
-        function saveAndCalculate() {
-            const data = {
-                maximiser: {
-                    units: 35237.94,
-                    nav: parseFloat(document.getElementById('maximiserNav').value) || 0
-                },
-                tata: {
-                    name: document.getElementById('tataName').value || 'Tata AIA ULIP',
-                    nav: parseFloat(document.getElementById('tataNav').value) || 0,
-                    units: parseFloat(document.getElementById('tataUnits').value) || 0
-                },
-                mf: {
-                    code: document.getElementById('mfCode').value,
-                    units: parseFloat(document.getElementById('mfUnits').value) || 0
+        async function fetchAllData() {
+            try {
+                // Fetch Scheme 154265
+                const response = await fetch(`https://api.mfapi.in/mf/${SCHEME_154265_CODE}`);
+                const data = await response.json();
+                
+                if (data.status === 'SUCCESS' && data.data && data.data.length > 0) {
+                    const latestNav = parseFloat(data.data[0].nav);
+                    const value = latestNav * SCHEME_154265_UNITS;
+                    
+                    document.getElementById('scheme154265Nav').textContent = '₹' + latestNav.toFixed(2);
+                    document.getElementById('scheme154265Value').textContent = formatCurrency(value);
+                    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+                    
+                    // Store for total calculation
+                    window.scheme154265Value = value;
                 }
-            };
-            localStorage.setItem('portfolioData', JSON.stringify(data));
-            calculateAll();
+            } catch (error) {
+                console.error('Error fetching MF data:', error);
+                document.getElementById('scheme154265Nav').textContent = 'Error';
+            }
             
-            // Visual feedback
-            const btn = document.querySelector('button');
-            btn.textContent = 'Saved Successfully!';
-            btn.classList.add('bg-green-600');
-            setTimeout(() => {
-                btn.textContent = 'Save & Calculate Total';
-                btn.classList.remove('bg-green-600');
-            }, 2000);
+            calculateTotal();
         }
 
-        async function calculateAll() {
+        function calculateTotal() {
+            // Scheme 154265 (from API)
+            const schemeValue = window.scheme154265Value || 0;
+            
+            // Maximiser Fund V (manual)
             const maximiserNav = parseFloat(document.getElementById('maximiserNav').value) || 0;
-            const maximiserValue = 35237.94 * maximiserNav;
-            document.getElementById('maximiserValue').textContent = formatCurrency(maximiserValue);
-
+            const maximiserValue = maximiserNav * MAXIMISER_UNITS;
+            document.getElementById('maximiserValue').textContent = maximiserValue > 0 ? formatCurrency(maximiserValue) : '--';
+            
+            // Tata AIA (manual)
             const tataNav = parseFloat(document.getElementById('tataNav').value) || 0;
             const tataUnits = parseFloat(document.getElementById('tataUnits').value) || 0;
             const tataValue = tataNav * tataUnits;
-
-            let mfValue = 0;
-            const mfCode = document.getElementById('mfCode').value;
-            const mfUnits = parseFloat(document.getElementById('mfUnits').value) || 0;
+            document.getElementById('tataValue').textContent = tataValue > 0 ? formatCurrency(tataValue) : '--';
             
-            if (mfCode && mfUnits) {
-                mfValue = await fetchMFValue(mfCode, mfUnits);
-            }
-
-            const total = maximiserValue + tataValue + mfValue;
+            // Total
+            const total = schemeValue + maximiserValue + tataValue;
             document.getElementById('totalValue').textContent = formatCurrency(total);
-            document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleString();
-
-            renderCards(maximiserValue, maximiserNav, tataValue, tataNav, tataUnits, mfValue);
         }
 
-        async function fetchMFValue(code, units) {
-            try {
-                const response = await fetch(`https://api.mfapi.in/mf/${code}`);
-                const data = await response.json();
-                if (data.status === 'SUCCESS') {
-                    const nav = parseFloat(data.data[0].nav);
-                    return nav * units;
-                }
-            } catch (e) {
-                console.error('MF fetch error:', e);
-            }
-            return 0;
+        function saveULIPData() {
+            const data = {
+                maximiserNav: document.getElementById('maximiserNav').value,
+                tataName: document.getElementById('tataName').value,
+                tataNav: document.getElementById('tataNav').value,
+                tataUnits: document.getElementById('tataUnits').value
+            };
+            localStorage.setItem('ulipData', JSON.stringify(data));
+            
+            // Visual feedback
+            const btn = document.querySelector('button[onclick="saveULIPData()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Saved!';
+            btn.classList.add('bg-green-600');
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-green-600');
+                lucide.createIcons();
+            }, 2000);
+            
+            calculateTotal();
         }
 
-        function renderCards(maxVal, maxNav, tataVal, tataNav, tataUnits, mfVal) {
-            const dashboard = document.getElementById('dashboard');
-            let html = '';
-
-            // ICICI Maximiser Card
-            html += `
-                <div class="glass rounded-xl p-6 border-l-4 border-amber-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-lg">Maximiser Fund V</h3>
-                        <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-1 rounded">ULIP</span>
-                    </div>
-                    <div class="space-y-1 text-sm mb-3">
-                        <div class="flex justify-between"><span class="text-slate-400">Units:</span> <span>35,237.94</span></div>
-                        <div class="flex justify-between"><span class="text-slate-400">NAV:</span> <span>₹${maxNav.toFixed(2)}</span></div>
-                    </div>
-                    <div class="text-2xl font-bold text-amber-400">${formatCurrency(maxVal)}</div>
-                </div>
-            `;
-
-            // Tata AIA Card (if values exist)
-            if (tataVal > 0) {
-                html += `
-                    <div class="glass rounded-xl p-6 border-l-4 border-orange-500">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-lg">${document.getElementById('tataName').value || 'Tata AIA'}</h3>
-                            <span class="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">ULIP</span>
-                        </div>
-                        <div class="space-y-1 text-sm mb-3">
-                            <div class="flex justify-between"><span class="text-slate-400">Units:</span> <span>${tataUnits}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-400">NAV:</span> <span>₹${tataNav.toFixed(2)}</span></div>
-                        </div>
-                        <div class="text-2xl font-bold text-orange-400">${formatCurrency(tataVal)}</div>
-                    </div>
-                `;
+        function loadSavedData() {
+            const saved = localStorage.getItem('ulipData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                document.getElementById('maximiserNav').value = data.maximiserNav || '';
+                document.getElementById('tataName').value = data.tataName || 'Tata AIA Fund';
+                document.getElementById('tataNav').value = data.tataNav || '';
+                document.getElementById('tataUnits').value = data.tataUnits || '';
             }
-
-            // MF Card (if applicable)
-            if (mfVal > 0) {
-                html += `
-                    <div class="glass rounded-xl p-6 border-l-4 border-blue-500">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-lg">Mutual Fund</h3>
-                            <span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">MF</span>
-                        </div>
-                        <div class="text-2xl font-bold text-blue-400">${formatCurrency(mfVal)}</div>
-                        <div class="text-xs text-slate-400 mt-2">Auto-updated via API</div>
-                    </div>
-                `;
-            }
-
-            dashboard.innerHTML = html;
         }
+
+        function refreshData() {
+            const btn = document.querySelector('button[onclick="refreshData()"]');
+            btn.classList.add('animate-spin');
+            fetchAllData().then(() => {
+                setTimeout(() => btn.classList.remove('animate-spin'), 500);
+            });
+        }
+
+        // Auto-calculate on input change
+        document.getElementById('maximiserNav').addEventListener('input', calculateTotal);
+        document.getElementById('tataNav').addEventListener('input', calculateTotal);
+        document.getElementById('tataUnits').addEventListener('input', calculateTotal);
 
         function formatCurrency(amount) {
             if (amount >= 10000000) return '₹' + (amount/10000000).toFixed(2) + ' Cr';
